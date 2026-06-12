@@ -1,19 +1,12 @@
 import cv2
 
-
 image = cv2.imread(r"C:\users\shubham\Desktop\ai\lesson 1.cv\m.jpeg")
-
 if image is None:
     print("Error: Image not found!")
     exit()
 
-
 print("Original Shape:", image.shape)
-
-
 sizes = [(100, 100), (224, 224), (500, 300)]
-
-
 for i, size in enumerate(sizes):
     resized = cv2.resize(image, size)
 
