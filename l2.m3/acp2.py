@@ -23,7 +23,7 @@ def color_filter(img, f):
 cap = cv2.VideoCapture(0)
 f = "original"
 
-print("r for red, c for cyan, p for pink, z for purple, o for original, q for quit")
+print("r for red, c for cyan, p for pink, z for purple, o for original, q for quit, thank you")
 
 while True:
     ret, frame = cap.read()
