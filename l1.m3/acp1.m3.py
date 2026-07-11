@@ -19,7 +19,7 @@ for size in sizes:
     filename = f"resized_{size[0]}x{size[1]}.jpg"
     cv2.imwrite(filename, resized)
 
-    print(f"Saved: {filename} | Shape: {resized.shape}")
+    print(f"Saved: {filename}  Shape: {resized.shape}")
 
 cv2.waitKey(0)
 cv2.destroyAllWindows()
