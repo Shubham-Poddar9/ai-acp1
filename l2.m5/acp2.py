@@ -13,44 +13,30 @@ api = ""
 
 client = InferenceClient(api_key=api)
 
+print("AI Image Generation & Enhancement Pipeline")
 print("Primary model:", models[0])
-print("Type 'q' to exit")
+print("Enter 'q' to exit.\n")
 
 def enhance_image(image):
-    print("\nChoose enhancement settings:")
-
-    brightness = float(input("Brightness (1.0 = normal): ") or 1.5)
-    contrast = float(input("Contrast (1.0 = normal): ") or 1.3)
-    sharpness = float(input("Sharpness (1.0 = normal): ") or 1.5)
-    blur = float(input("Blur radius (0 = none): ") or 0)
-
-    image = ImageEnhance.Brightness(image).enhance(brightness)
-
-    image = ImageEnhance.Contrast(image).enhance(contrast)
-
-    image = ImageEnhance.Sharpness(image).enhance(sharpness)
-
-    if blur > 0:
-        image = image.filter(
-            ImageFilter.GaussianBlur(radius=blur)
-        )
-
+    image = ImageEnhance.Brightness(image).enhance(1.4)
+    image = ImageEnhance.Contrast(image).enhance(1.3)
+    image = ImageEnhance.Sharpness(image).enhance(1.5)
+    image = image.filter(ImageFilter.GaussianBlur(radius=0.5))
     return image
 
-
 while True:
-
-    prompt = input("\nEnter your image prompt: ").strip()
+    prompt = input("Enter your image prompt: ").strip()
 
     if prompt.lower() == "q":
         print("Program exited.")
         break
 
     if not prompt:
-        print("Please enter a prompt.")
+        print("Please enter a valid prompt.")
         continue
 
     print("\nGenerating image...")
+
     image = None
 
     for model in models:
@@ -66,30 +52,22 @@ while True:
             break
 
         except Exception as e:
-            print("Error with", model)
-            print(e)
+            print("Model failed:", e)
 
     if image is not None:
+        print("Applying image enhancements...")
 
-        try:
-            print("\nApplying image enhancements...")
+        image = enhance_image(image)
 
-            image = enhance_image(image)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"generated_{timestamp}.jpg"
 
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        image.save(filename, quality=95)
 
-            filename = f"enhanced_image_{timestamp}.jpg"
-
-            image.save(filename, "JPEG")
-
-            print("\nImage enhancement completed!")
-            print("Saved as:", filename)
-
-            image.show()
-
-        except Exception as e:
-            print("Error while processing image:", e)
+        print("Image saved as:", filename)
+        image.show()
 
     else:
-        print("\nAll models failed.")
-        print("Please check your API key, internet connection, or model availability.")
+        print("Unable to generate the image using the available models.")
+
+    print()
