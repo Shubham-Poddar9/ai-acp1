@@ -1,65 +1,56 @@
 import requests
-from PIL import Image, ImageEnhance, ImageFilter
+from PIL import Image
 from io import BytesIO
 
-model = "stabilityai/stable-diffusion-xl-base-1.0"
+model = "stabilityai/stable-diffusion-2-inpainting"
 
 url = f"https://router.huggingface.co/hf-inference/models/{model}"
 
 api = ""
 
-prompt = input("Enter your image theme/prompt: ")
+image_path = input("Enter the path of the vintage image: ")
+mask_path = input("Enter the path of the mask image: ")
 
-payload = {
-    "inputs": prompt
-}
+prompt = input("Enter a description for the damaged area: ")
+
+with open(image_path, "rb") as image_file:
+    image_data = image_file.read()
+
+with open(mask_path, "rb") as mask_file:
+    mask_data = mask_file.read()
 
 headers = {
-    "Authorization": f"Bearer {api}",
-    "Content-Type": "application/json"
+    "Authorization": f"Bearer {api}"
 }
 
-print("\nGenerating image...")
+files = {
+    "image": ("image.png", image_data, "image/png"),
+    "mask_image": ("mask.png", mask_data, "image/png")
+}
+
+data = {
+    "prompt": prompt
+}
 
 response = requests.post(
     url,
     headers=headers,
-    json=payload
+    files=files,
+    data=data
 )
 
-
 if response.status_code != 200:
-    print("Error:", response.status_code)
-    print(response.text)
+    print("Error:", response.text)
     exit()
 
-image = Image.open(BytesIO(response.content)).convert("RGB")
+result = Image.open(BytesIO(response.content))
 
-print("Image generated successfully!")
+result.show()
 
-brightness = ImageEnhance.Brightness(image)
-image = brightness.enhance(1.15)
-
-contrast = ImageEnhance.Contrast(image)
-image = contrast.enhance(1.20)
-
-color = ImageEnhance.Color(image)
-image = color.enhance(1.25)
-
-sharpness = ImageEnhance.Sharpness(image)
-image = sharpness.enhance(1.40)
-image = image.filter(ImageFilter.SMOOTH)
-
-image.show()
-
-
-choice = input("\nDo you want to save the enhanced image? (y/n): ").strip().lower()
+print("Do you want to save the restored image?")
+choice = input("y or n: ").strip().lower()
 
 if choice == "y":
-    output = "enhanced_ai_image.jpg"
-    image.save(output, quality=95)
-    print("Image saved as:", output)
-else:
-    print("Image was not saved.")
-
-print("\nImage enhancement pipeline completed!")
+    output = "restored_vintage_photo.png"
+    result.save(output)
+    print("Image is saved as", output)
