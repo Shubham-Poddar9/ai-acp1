@@ -1,105 +1,96 @@
+import webbrowser
 import pyttsx3
 import speech_recognition as sr
-from googletrans import Translator
+import datetime
+
 
 def speak(text):
     engine = pyttsx3.init()
-    engine.setProperty("rate", 150)
-    voices = engine.getProperty("voices")
-    engine.setProperty("voice", voices[0].id)
+    engine.setProperty("rate", 160)
+    engine.setProperty("volume", 1.0)
+
+    print("Assistant:", text)
     engine.say(text)
     engine.runAndWait()
 
-def translate_text(text, source_language, target_language):
-    translator = Translator()
-    translated = translator.translate(
-        text,
-        src=source_language,
-        dest=target_language
-    )
-    return translated.text
 
-def select_language(message):
-    print("\nAvailable Languages:")
-    print("1. English (en)")
-    print("2. French (fr)")
-    print("3. German (de)")
-    print("4. Spanish (es)")
-    print("5. Italian (it)")
-    print("6. Portuguese (pt)")
-    print("7. Hindi (hi)")
-    print("8. Nepali (ne)")
+def reco():
+    r = sr.Recognizer()
 
-    choice = input(message)
+    with sr.Microphone() as src:
+        print("Listening...")
+        r.adjust_for_ambient_noise(src, duration=0.5)
 
-    language_dict = {
-        "1": "en",
-        "2": "fr",
-        "3": "de",
-        "4": "es",
-        "5": "it",
-        "6": "pt",
-        "7": "hi",
-        "8": "ne"
-    }
+        try:
+            audio = r.listen(src, timeout=8)
 
-    return language_dict.get(choice, "en")
-
-def recognize_speech(source_language):
-    recognizer = sr.Recognizer()
-
-    with sr.Microphone() as source:
-        print("\nListening...")
-        recognizer.adjust_for_ambient_noise(source)
-        audio = recognizer.listen(source)
+        except sr.WaitTimeoutError:
+            print("Time out, try again")
+            return ""
 
     try:
-        text = recognizer.recognize_google(
-            audio,
-            language=source_language
-        )
-        print("You:", text)
-        return text
+        command = r.recognize_google(audio)
+        print("You:", command)
+        return command.lower()
 
     except sr.UnknownValueError:
-        print("Sorry, I could not understand your speech.")
-        return None
+        print("Sorry, I could not understand you")
+        speak("Sorry, I could not understand you")
+        return ""
 
     except sr.RequestError:
-        print("Speech recognition service is unavailable.")
-        return None
+        print("Speech recognition service is not available")
+        speak("Speech recognition service is not available")
+        return ""
 
-    except Exception as e:
-        print("Error:", e)
-        return None
+
+def respond(command):
+
+    if "name" in command:
+        speak("My name is Jarvis.")
+
+    elif "hello" in command or "hi" in command:
+        speak("Hello! How can I help you?")
+
+    elif "time" in command:
+        time = datetime.datetime.now().strftime("%I:%M %p")
+        speak("The current time is " + time)
+
+    elif "date" in command:
+        date = datetime.datetime.now().strftime("%d %B %Y")
+        speak("Today's date is " + date)
+
+    elif "open google" in command:
+        speak("Opening Google.")
+        webbrowser.open("https://www.google.com")
+
+    elif "open youtube" in command:
+        speak("Opening YouTube.")
+        webbrowser.open("https://www.youtube.com")
+
+    elif "how are you" in command:
+        speak("I am doing great. Thank you for asking!")
+
+    elif "exit" in command or "stop" in command or "goodbye" in command:
+        speak("Goodbye! Have a nice day.")
+        return False
+
+    else:
+        speak("Sorry, I don't know that command.")
+
+    return True
+
 
 def main():
-    print("===== Speech Translation Application =====")
+    print("Welcome to Jarvis Voice Assistant!")
+    speak("Hello! I am Jarvis. How can I help you?")
 
-    source_language = select_language(
-        "Select source language (1-8): "
-    )
+    while True:
+        command = reco()
 
-    target_language = select_language(
-        "Select target language (1-8): "
-    )
+        if command:
+            if not respond(command):
+                break
 
-    print("\nStart speaking...")
-    original_text = recognize_speech(source_language)
 
-    if original_text:
-        try:
-            translated_text = translate_text(
-                original_text,
-                source_language,
-                target_language
-            )
-
-            print("Translation:", translated_text)
-            speak(translated_text)
-
-        except Exception as e:
-            print("Translation error:", e)
-
-if __name__ == "__main__":
-    main()
+main()
