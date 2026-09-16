@@ -1,96 +1,66 @@
-import webbrowser
-import pyttsx3
-import speech_recognition as sr
-import datetime
+from transformers import BlipProcessor, BlipForConditionalGeneration, pipeline
+from PIL import Image
+import torch
 
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
-def speak(text):
-    engine = pyttsx3.init()
-    engine.setProperty("rate", 160)
-    engine.setProperty("volume", 1.0)
+processor = BlipProcessor.from_pretrained(
+    "Salesforce/blip-image-captioning-base"
+)
 
-    print("Assistant:", text)
-    engine.say(text)
-    engine.runAndWait()
+model = BlipForConditionalGeneration.from_pretrained(
+    "Salesforce/blip-image-captioning-base"
+).to(device)
 
+gpt2 = pipeline(
+    "text-generation",
+    model="gpt2",
+    device=0 if device == "cuda" else -1
+)
 
-def reco():
-    r = sr.Recognizer()
+def generate_caption(path):
+    image = Image.open(path).convert("RGB")
 
-    with sr.Microphone() as src:
-        print("Listening...")
-        r.adjust_for_ambient_noise(src, duration=0.5)
+    inputs = processor(
+        images=image,
+        return_tensors="pt"
+    ).to(device)
 
-        try:
-            audio = r.listen(src, timeout=8)
+    output = model.generate(
+        **inputs,
+        max_new_tokens=30
+    )
 
-        except sr.WaitTimeoutError:
-            print("Time out, try again")
-            return ""
+    caption = processor.decode(
+        output[0],
+        skip_special_tokens=True
+    )
 
-    try:
-        command = r.recognize_google(audio)
-        print("You:", command)
-        return command.lower()
+    return caption
 
-    except sr.UnknownValueError:
-        print("Sorry, I could not understand you")
-        speak("Sorry, I could not understand you")
-        return ""
+def expand_caption(caption):
+    result = gpt2(
+        caption,
+        max_new_tokens=50,
+        num_return_sequences=1
+    )
 
-    except sr.RequestError:
-        print("Speech recognition service is not available")
-        speak("Speech recognition service is not available")
-        return ""
+    return result[0]["generated_text"]
 
+path = input("Enter image path: ")
 
-def respond(command):
+try:
+    caption = generate_caption(path)
 
-    if "name" in command:
-        speak("My name is Jarvis.")
+    print("\nBasic Caption:")
+    print(caption)
 
-    elif "hello" in command or "hi" in command:
-        speak("Hello! How can I help you?")
+    choice = input("\nExpand caption? (yes/no): ")
 
-    elif "time" in command:
-        time = datetime.datetime.now().strftime("%I:%M %p")
-        speak("The current time is " + time)
+    if choice.lower() == "yes":
+        description = expand_caption(caption)
+        print("\nExpanded Caption:")
+        print(description)
 
-    elif "date" in command:
-        date = datetime.datetime.now().strftime("%d %B %Y")
-        speak("Today's date is " + date)
-
-    elif "open google" in command:
-        speak("Opening Google.")
-        webbrowser.open("https://www.google.com")
-
-    elif "open youtube" in command:
-        speak("Opening YouTube.")
-        webbrowser.open("https://www.youtube.com")
-
-    elif "how are you" in command:
-        speak("I am doing great. Thank you for asking!")
-
-    elif "exit" in command or "stop" in command or "goodbye" in command:
-        speak("Goodbye! Have a nice day.")
-        return False
-
-    else:
-        speak("Sorry, I don't know that command.")
-
-    return True
-
-
-def main():
-    print("Welcome to Jarvis Voice Assistant!")
-    speak("Hello! I am Jarvis. How can I help you?")
-
-    while True:
-        command = reco()
-
-        if command:
-            if not respond(command):
-                break
-
-
-main()
+except Exception as e:
+    print("Error:", e)
