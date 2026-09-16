@@ -1,96 +1,70 @@
-import base64
-import requests
-from datetime import datetime
+import speech_recognition as sr
+from googletrans import Translator
+import pyttsx3
 
-api = ""
 
-url = "https://router.huggingface.co/v1/chat/completions"
+def speak(text):
+    engine = pyttsx3.init()
+    engine.setProperty("rate", 170)
+    engine.setProperty("volume", 1.0)
+    engine.say(text)
+    engine.runAndWait()
+    engine.stop()
 
-models = [
-    "zai-org/GLM-4.5V",
-    "Qwen/Qwen2.5-VL-72B-Instruct",
-    "Qwen/Qwen2.5-VL-32B-Instruct"
-]
 
-headers = {
-    "Authorization": f"Bearer {api}",
-    "Content-Type": "application/json"
-}
+def listen():
+    recognizer = sr.Recognizer()
 
-report = []
-
-while True:
-    img = input("\nEnter image path (or type 'exit' to finish): ")
-
-    if img.lower() == "exit":
-        break
+    with sr.Microphone() as source:
+        print("Listening...")
+        recognizer.adjust_for_ambient_noise(source)
+        audio = recognizer.listen(source)
 
     try:
-        with open(img, "rb") as f:
-            b64 = base64.b64encode(f.read()).decode()
+        text = recognizer.recognize_google(audio)
+        print("You said:", text)
+        return text
 
-        caption = None
+    except sr.UnknownValueError:
+        print("Sorry, I could not understand you.")
+        return ""
 
-        for model in models:
-            print("\nTrying:", model)
+    except sr.RequestError:
+        print("Speech recognition service is unavailable.")
+        return ""
 
-            payload = {
-                "model": model,
-                "messages": [{
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": "Give a short and clear caption for this image."
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/png;base64,{b64}"
-                            }
-                        }
-                    ]
-                }]
-            }
 
-            r = requests.post(
-                url,
-                headers=headers,
-                json=payload,
-                timeout=120
-            )
+def translate(text, language):
+    translator = Translator()
+    result = translator.translate(text, dest=language)
+    return result.text
 
-            if r.status_code == 200:
-                caption = r.json()["choices"][0]["message"]["content"]
-                print("Caption:", caption)
 
-                report.append({
-                    "image": img,
-                    "caption": caption,
-                    "model": model,
-                    "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                })
+def main():
+    print("Welcome to Voice Translation Assistant")
 
-                break
-            else:
-                print("It failed:", r.status_code)
+    language = input(
+        "Enter language code (es=Spanish, fr=French, hi=Hindi, "
+        "de=German, ja=Japanese): "
+    )
 
-        if caption is None:
-            print("Could not generate a caption.")
+    while True:
+        choice = input("\nPress Enter to speak or type exit: ")
 
-    except FileNotFoundError:
-        print("Image not found. Please enter a valid path.")
+        if choice.lower() == "exit":
+            print("Assistant stopped")
+            break
 
-with open("caption_report.txt", "w", encoding="utf-8") as f:
-    f.write("IMAGE CAPTIONING REPORT\n")
-    f.write("=" * 60 + "\n\n")
+        text = listen()
 
-    for item in report:
-        f.write("Image: " + item["image"] + "\n")
-        f.write("Caption: " + item["caption"] + "\n")
-        f.write("Model: " + item["model"] + "\n")
-        f.write("Time: " + item["time"] + "\n")
-        f.write("-" * 60 + "\n")
+        if text == "":
+            continue
 
-print("\nCaptioning completed.")
-print("Report saved as caption_report.txt")
+        translated_text = translate(text, language)
+
+        print("Translated text:", translated_text)
+
+        speak(translated_text)
+
+
+main()
